@@ -5,25 +5,37 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import pkg from "@prisma/client";
 
-const { PrismaClient } = pkg;
 dotenv.config();
 
-const app = express();
+const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
-app.use(cors({ origin: "http://localhost:5173" }));
+const app = express();
+
+// ✅ allow both local + deployed frontend
+app.use(
+  cors({
+    origin: ["http://localhost:5173", process.env.FRONTEND_URL],
+    credentials: true
+  })
+);
+
 app.use(express.json());
+
+// ================= AUTH =================
 
 app.post("/signup", async (req, res) => {
   const { email, password } = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10);
 
   try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await prisma.user.create({
       data: { email, password: hashedPassword }
     });
+
     res.json(user);
-  } catch {
+  } catch (err) {
     res.status(400).json({ error: "User already exists" });
   }
 });
@@ -46,8 +58,13 @@ app.post("/login", async (req, res) => {
   res.json({ token });
 });
 
+// ================= PROTECTED =================
+
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization;
+
+  if (!token) return res.status(401).json({ error: "No token" });
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
@@ -61,4 +78,8 @@ app.get("/dashboard", authMiddleware, (req, res) => {
   res.json({ message: "Welcome!", user: req.user });
 });
 
-app.listen(5000, () => console.log("Server running"));
+// ================= SERVER =================
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => console.log(`Server running on ${PORT}`));
