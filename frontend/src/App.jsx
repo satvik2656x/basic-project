@@ -1,12 +1,14 @@
 import { useState } from "react";
 
+const API = "https://basic-backend-obcg.onrender.com"; // ✅ your live backend
+
 function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [user, setUser] = useState(null);
 
   const signup = async () => {
-    const res = await fetch("http://localhost:5000/signup", {
+    const res = await fetch(`${API}/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -19,7 +21,7 @@ function App() {
   };
 
   const login = async () => {
-    const res = await fetch("http://localhost:5000/login", {
+    const res = await fetch(`${API}/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -32,7 +34,7 @@ function App() {
     if (data.token) {
       localStorage.setItem("token", data.token);
 
-      const dashboardRes = await fetch("http://localhost:5000/dashboard", {
+      const dashboardRes = await fetch(`${API}/dashboard`, {
         headers: {
           Authorization: data.token,
         },
@@ -48,7 +50,7 @@ function App() {
     setUser(null);
   };
 
-  // 👇 Dashboard view
+  // Dashboard view
   if (user) {
     return (
       <div style={{ textAlign: "center", marginTop: "100px" }}>
@@ -59,7 +61,7 @@ function App() {
     );
   }
 
-  // 👇 Login/Signup view
+  // Login/Signup view
   return (
     <div style={{ textAlign: "center", marginTop: "100px" }}>
       <h1>🚀 DevLaunch</h1>
