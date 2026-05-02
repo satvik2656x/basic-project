@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
 
 const app = express();
 
-// ✅ allow both local + deployed frontend
+// ✅ CORS (local + deployed frontend)
 app.use(
   cors({
     origin: ["http://localhost:5173", process.env.FRONTEND_URL],
@@ -21,6 +21,11 @@ app.use(
 );
 
 app.use(express.json());
+
+// ================= ROOT =================
+app.get("/", (req, res) => {
+  res.send("Backend is running 🚀");
+});
 
 // ================= AUTH =================
 
@@ -43,19 +48,27 @@ app.post("/signup", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return res.status(404).json({ error: "User not found" });
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
 
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) return res.status(401).json({ error: "Invalid password" });
+    if (!user)
+      return res.status(404).json({ error: "User not found" });
 
-  const token = jwt.sign(
-    { id: user.id, email: user.email },
-    process.env.JWT_SECRET,
-    { expiresIn: "1d" }
-  );
+    const valid = await bcrypt.compare(password, user.password);
 
-  res.json({ token });
+    if (!valid)
+      return res.status(401).json({ error: "Invalid password" });
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.json({ token });
+  } catch (err) {
+    res.status(500).json({ error: "Login failed" });
+  }
 });
 
 // ================= PROTECTED =================
@@ -63,7 +76,8 @@ app.post("/login", async (req, res) => {
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization;
 
-  if (!token) return res.status(401).json({ error: "No token" });
+  if (!token)
+    return res.status(401).json({ error: "No token provided" });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -82,4 +96,6 @@ app.get("/dashboard", authMiddleware, (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
